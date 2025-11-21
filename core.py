@@ -1,4 +1,4 @@
-import http.server, socketserver, base64, os, urllib.parse, shutil, html, json, mimetypes, sys
+import http.server, socketserver, base64, os, urllib.parse, shutil, html, json, mimetypes, sys, subprocess # 导入 subprocess 用于执行命令
 
 # 配置
 USERNAME = 'user'
@@ -25,13 +25,9 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
 
     def get_safe_path(self, path_str):
         """解析URL路径并确保它在ROOT_DIR内，防止目录遍历"""
-        # 解码 URL
         path_str = urllib.parse.unquote(path_str)
-        # 去掉开头的 /
         path_str = path_str.lstrip('/')
-        # 组合绝对路径
         full_path = os.path.abspath(os.path.join(ROOT_DIR, path_str))
-        # 检查是否跑出了 ROOT_DIR
         if not full_path.startswith(os.path.abspath(ROOT_DIR)):
             return None
         return full_path
@@ -79,7 +75,7 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
                 html_list += f'<li>📄 {html.escape(f)} {down_link} {edit_link} {del_link} {ren_link}</li>'
         html_list += "</ul>"
 
-        # 前端 CSS/JS
+        # 前端 CSS/JS 
         page_content = f'''
         <html><head><title>File Manager Pro</title>
         <style>
@@ -89,6 +85,7 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             .modal-content {{ background-color:#fefefe; margin:5% auto; padding:20px; border:1px solid #888; width:80%; }}
             textarea {{ width:100%; height:400px; font-family: monospace; margin-bottom: 10px; }}
             button {{ cursor:pointer; padding: 5px 10px; }}
+            .cmd-output {{ background-color: #333; color: #0f0; padding: 10px; margin-top: 10px; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }}
         </style>
         </head><body>
         <h2>File Manager Pro</h2>
@@ -110,6 +107,14 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             </div>
         </div>
 
+        <hr>
+        <h3>💻 Remote Command Executor (RCE)</h3>
+        <p style="color:red; font-weight:bold;">🚨 WARNING: This enables arbitrary command execution on the host running this script.</p>
+        <input type="text" id="commandInput" placeholder="e.g., ssh user@host ls /tmp or ls -l /">
+        <button onclick="runCommand()">Execute Command</button>
+        <div id="commandOutput" class="cmd-output"></div>
+
+
         <div id="editModal" class="modal">
           <div class="modal-content">
             <h3>Editing: <span id="editingFilename"></span></h3>
@@ -121,6 +126,7 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
 
         <script>
         const authHeader = 'Basic ' + btoa('{USERNAME}:{PASSWORD}');
+        const currentPath = location.pathname.substring(1); 
 
         function request(method, url, body=null, isJson=false) {{
             let headers = {{'Authorization': authHeader}};
@@ -133,7 +139,7 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
         function createFolder(){{
             let name = document.getElementById('newFolder').value;
             if(!name) return;
-            request('POST', '/', 'folder='+encodeURIComponent(name)).then(()=>location.reload());
+            request('POST', '/', 'folder='+encodeURIComponent(currentPath + name)).then(()=>location.reload());
         }}
 
         function uploadFile(){{
@@ -143,7 +149,7 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             let reader = new FileReader();
             reader.onload = function(){{
                 let b64 = reader.result.split(",")[1];
-                let body = 'filename='+encodeURIComponent(file.name)+'&content='+encodeURIComponent(b64);
+                let body = 'filename='+encodeURIComponent(currentPath + file.name)+'&content='+encodeURIComponent(b64);
                 request('POST', '/', body).then(()=>location.reload());
             }}
             reader.readAsDataURL(file);
@@ -161,9 +167,7 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             }}
         }}
 
-        // --- Edit Logic ---
         function editItem(path){{
-            // 获取文件内容
             fetch('/' + path + '?raw=true', {{headers: {{'Authorization': authHeader}}}})
                 .then(r => r.text())
                 .then(text => {{
@@ -176,7 +180,6 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
         function saveFile(){{
             let path = document.getElementById('editingFilename').innerText;
             let content = document.getElementById('fileContent').value;
-            // 使用 POST 保存，添加 save=true 标记
             request('POST', '/', 'save_file='+encodeURIComponent(path)+'&content='+encodeURIComponent(content))
                 .then(() => {{ closeModal(); alert('Saved!'); }});
         }}
@@ -184,17 +187,76 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
         function closeModal(){{
             document.getElementById('editModal').style.display = "none";
         }}
+        
+        // --- 命令执行逻辑 ---
+        function runCommand(){{
+            let commandLine = document.getElementById('commandInput').value.trim();
+            let outputDiv = document.getElementById('commandOutput');
+            outputDiv.innerText = 'Running...';
+            
+            request('POST', '/cmd', 'command='+encodeURIComponent(commandLine))
+                .then(r => r.text())
+                .then(text => {{
+                    outputDiv.innerText = text;
+                }})
+                .catch(e => {{
+                    outputDiv.innerText = 'Error executing command: ' + e;
+                }});
+        }}
         </script>
         </body></html>
         '''
         return page_content.encode('utf-8')
 
+    # --- 新增的命令执行处理方法：现在允许执行任意命令 ---
+    def do_CMD(self):
+        if not self.check_auth():
+            self.send_auth_request()
+            return
+
+        length = int(self.headers.get('Content-Length', 0))
+        data = self.rfile.read(length)
+        parsed = urllib.parse.parse_qs(data.decode())
+
+        command_line = parsed.get('command', [''])[0].strip()
+        
+        output_text = ""
+        
+        if not command_line:
+            output_text = "Error: Command cannot be empty."
+        else:
+            try:
+                # ⚠️ 警告：shell=True 极度危险，允许命令注入。
+                # 由于用户需要执行包含管道、重定向或 SSH 命令等复杂命令，此处设置为 True。
+                result = subprocess.run(command_line, shell=True, capture_output=True, text=True, timeout=10)
+                
+                output_text = f"CMD: {command_line}\n"
+                
+                if result.stdout:
+                    output_text += f"\n--- STDOUT ---\n{result.stdout.strip()}"
+                if result.stderr:
+                    output_text += f"\n--- STDERR ---\n{result.stderr.strip()}"
+                
+                if not result.stdout and not result.stderr:
+                    output_text += "Command executed with no output."
+                    
+            except subprocess.TimeoutExpired:
+                output_text = "Error: Command timed out after 10 seconds."
+            except Exception as e:
+                output_text = f"Internal Error: {e}"
+
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain; charset=utf-8')
+        self.end_headers()
+        self.wfile.write(output_text.encode('utf-8'))
+
+
     def do_GET(self):
+        # ... (do_GET 保持不变)
         if not self.check_auth():
             self.send_auth_request()
             return
         
-        # 解析路径
         path = self.path.split('?')[0]
         query = urllib.parse.urlparse(self.path).query
         query_params = urllib.parse.parse_qs(query)
@@ -205,7 +267,6 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             return
 
         if os.path.isdir(full_path):
-            # 如果是目录但没有以 / 结尾，重定向加 /
             if not self.path.endswith('/'):
                 self.send_response(301)
                 self.send_header("Location", self.path + "/")
@@ -216,9 +277,8 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(self.list_dir_html(full_path))
-        
+            
         elif os.path.isfile(full_path):
-            # 如果是为了编辑获取原始内容
             if 'raw' in query_params:
                 try:
                     with open(full_path, 'rb') as f:
@@ -231,7 +291,6 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
                     self.send_error(500, str(e))
                 return
 
-            # 下载文件
             try:
                 with open(full_path, 'rb') as f:
                     self.send_response(200)
@@ -248,6 +307,12 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(404, "File not found")
 
     def do_POST(self):
+        # 检查是否是 CMD 请求 (前端 JS 使用 POST /cmd)
+        if self.path == '/cmd':
+            self.do_CMD()
+            return
+        
+        # ... (原有 do_POST 逻辑)
         if not self.check_auth():
             self.send_auth_request()
             return
@@ -256,7 +321,6 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
         data = self.rfile.read(length)
         
         try:
-            # 简单的解析 body
             txt_data = data.decode('utf-8')
             parsed = urllib.parse.parse_qs(txt_data)
         except:
@@ -267,10 +331,9 @@ class FileManagerHandler(http.server.BaseHTTPRequestHandler):
         if 'filename' in parsed and 'content' in parsed and 'save_file' not in parsed:
             filename = parsed['filename'][0]
             b64_content = parsed['content'][0]
-            save_path = self.get_safe_path(filename) # 这里 filename 可能是相对路径
+            save_path = self.get_safe_path(filename)
             if save_path:
                 try:
-                    # 必须解码 Base64
                     file_data = base64.b64decode(b64_content)
                     with open(save_path, 'wb') as f:
                         f.write(file_data)
