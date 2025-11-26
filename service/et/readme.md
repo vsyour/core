@@ -9,27 +9,23 @@ https://github.com/vsyour/core/raw/refs/heads/main/service/et/cored
 wget -O /usr/sbin/cored https://github.com/vsyour/core/raw/refs/heads/main/service/et/cored
 chmod +x /usr/sbin/cored
 
-tee /etc/systemd/system/cored.service > /dev/null <<EOF
+cat /etc/systemd/system/cored.service > /dev/null <<EOF
 [Unit]
-Description=Core Network Service
-Documentation=Core Network Service
-DefaultDependencies=no
-After=network-pre.target
-Before=network.target
+Description=Cored Network Service
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/cored --network-name 'ytmWLXky1lUhvoNT' --network-secret 'RVwVQber0QK9AKmF' --multi-thread --use-smoltcp --latency-first --enable-kcp-proxy -l tcp://0:11000 udp://0:11000 wg://0:11001 ws://0:11001 wss://0:11002 -d
+ExecStart=/usr/sbin/cored --network-name 'ytmWLXky1lUhvoNT' --network-secret 'RVwVQber0QK9AKmF' --multi-thread --use-smoltcp --latency-first --enable-kcp-proxy -l tcp://0:40000 udp://0:40000 wg://0:39999 ws://0:39999 wss://0:39998 -i 192.7.7.79/24
 Restart=always
-RestartSec=2
-StartLimitIntervalSec=0
-LimitNOFILE=1048576
-
-User=root
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+chmod a+x /etc/systemd/system/cored.service
 
 
 systemctl daemon-reload
