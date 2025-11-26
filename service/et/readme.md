@@ -19,7 +19,7 @@ Before=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/cored --network-name 'ytmWLXky1lUhvoNT' --network-secret 'RVwVQber0QK9AKmF' --multi-thread --use-smoltcp --latency-first --enable-kcp-proxy -l tcp://0:11000 udp://0:11000 wg://0:11001 ws://0:11001 wss://0:11002
+ExecStart=/usr/sbin/cored --network-name 'ytmWLXky1lUhvoNT' --network-secret 'RVwVQber0QK9AKmF' --multi-thread --use-smoltcp --latency-first --enable-kcp-proxy -l tcp://0:11000 udp://0:11000 wg://0:11001 ws://0:11001 wss://0:11002 -d
 Restart=always
 RestartSec=2
 StartLimitIntervalSec=0
