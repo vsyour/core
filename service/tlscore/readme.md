@@ -1,6 +1,6 @@
 # tlscore
 ```
-wget -O /usr/sbin/tlscore wget https://github.com/vsyour/core/raw/refs/heads/main/service/tlscore/tlscore
+wget -O /usr/sbin/tlscore https://github.com/vsyour/core/raw/refs/heads/main/service/tlscore/tlscore
 chmod +x /usr/sbin/tlscore
 
 cat /etc/systemd/system/tlscore.service > /dev/null <<EOF
