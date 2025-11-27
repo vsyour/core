@@ -3,7 +3,7 @@
 wget -O /usr/sbin/tlscore https://github.com/vsyour/core/raw/refs/heads/main/service/tlscore/tlscore
 chmod +x /usr/sbin/tlscore
 
-cat /etc/systemd/system/tlscore.service > /dev/null <<EOF
+tee /etc/systemd/system/tlscore.service > /dev/null <<EOF
 [Unit]
 Description=tlscore Network Service
 After=network-online.target
