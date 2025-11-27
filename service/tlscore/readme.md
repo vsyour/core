@@ -11,7 +11,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/tlscore -l 0:39997 -p 'RVwVQber0QK9AKmF'
+ExecStart=/usr/sbin/tlscore -l 192.7.7.1:39997 -p 'RVwVQber0QK9AKmF'
 Restart=always
 RestartSec=5
 
