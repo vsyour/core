@@ -27,6 +27,15 @@ export HTTPS_PROXY=socks5://127.0.0.1:30001
 ```
 
 ## server
+###info
+```
+https://simi.studio/create-locally-managed-cloudflare-tunnel/
+https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/
+https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/local-tunnel-terms/#default-cloudflared-directory
+
+```
+
+
 ```
 # download cloudflared
 curl -L https://github.com/cloudflare/cloudflared/releases/download/2025.11.1/cloudflared-linux-amd64 -o cloudflared
