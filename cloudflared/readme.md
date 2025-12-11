@@ -71,6 +71,9 @@ EOF
 # mullvad-browser
 
 ```
-https://github.com/mullvad/mullvad-browser/releases/tag/15.0.3
+Creating a Mullvad account: https://mullvad.net/account/create
+In the Mullvad VPN app: https://mullvad.net/en/download/vpn/linux
+browser: [https://mullvad.net/en/download/vpn/linux](https://mullvad.net/en/download/browser/windows)
+
 ```
 
