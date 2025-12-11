@@ -73,7 +73,7 @@ EOF
 ```
 Creating a Mullvad account: https://mullvad.net/account/create
 In the Mullvad VPN app: https://mullvad.net/en/download/vpn/linux
-browser: [https://mullvad.net/en/download/vpn/linux](https://mullvad.net/en/download/browser/windows)
+browser: https://mullvad.net/en/download/browser/linux
 
 ```
 
