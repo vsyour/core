@@ -67,3 +67,10 @@ ingress:
 EOF
 ```
 
+
+# mullvad-browser
+
+```
+https://github.com/mullvad/mullvad-browser/releases/tag/15.0.3
+```
+
