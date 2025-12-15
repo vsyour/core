@@ -27,7 +27,7 @@ export HTTPS_PROXY=socks5://127.0.0.1:30001
 ```
 
 ## server
-###info
+### info
 ```
 https://simi.studio/create-locally-managed-cloudflare-tunnel/
 https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/
