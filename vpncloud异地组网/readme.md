@@ -1,4 +1,4 @@
-# 参考视频
+# 准备资料
 ```
 https://www.youtube.com/watch?v=aKW-Sgh41UU
 vpncloud下载: https://github.com/dswd/vpncloud/releases
