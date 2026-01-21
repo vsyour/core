@@ -72,3 +72,14 @@ ssh -p 8888 -D 1080 -N user@127.0.0.1 &
 # 通过 1080 代理访问外网
 curl -v -x socks5h://127.0.0.1:1080 https://ipinfo.io
 ```
+
+
+
+## 注意事项
+```
+# 必须设置为 yes，否则无法使用 -D 1080 做代理
+AllowTcpForwarding yes
+
+# 建议同时检查这一项，确保不是 no
+PermitOpen any
+```
