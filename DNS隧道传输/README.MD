@@ -96,3 +96,114 @@ sudo iptables -t nat -A OUTPUT -p udp -d <VPS_IP> --dport 53 -j DNAT --to-destin
 # & 符号表示在后台运行
 socat UDP4-LISTEN:53,fork UDP4:1.2.3.4:2319 &
 ```
+
+
+
+
+
+# 其他参考信息
+##安装 
+```
+  Kali Linux (预装):                                                                                                                                                                              
+  dns2tcpd --version                                                                                                                                                                              
+  dns2tcpc --version                                                                                                                                                                              
+                                                                                                                                                                                                  
+  Debian/Ubuntu:                                                                                                                                                                                  
+  sudo apt install dns2tcp                                                                                                                                                                        
+                                                                                                                                                                                                  
+  源码编译:                                                                                                                                                                                       
+  git clone https://github.com/alex-sector/dns2tcp.git                                                                                                                                            
+  cd dns2tcp                                                                                                                                                                                      
+  ./configure && make                                                                                                                                                                             
+  sudo make install                                                                                                                                                                               
+```
+
+## 服务端配置 (dns2tcpd)                                                                                                                                                                           
+```
+  1. 创建配置文件 /etc/dns2tcpd.conf:                                                                                                                                                             
+  listen = 0.0.0.0                                                                                                                                                                                
+  port = 53                                                                                                                                                                                       
+  user = nobody                                                                                                                                                                                   
+  chroot = /var/empty/dns2tcp                                                                                                                                                                     
+                                                                                                                                                                                                  
+  domain = yourdomain.com                                                                                                                                                                         
+  resources = ssh:127.0.0.1:22, smtp:127.0.0.1:25, http:127.0.0.1:8080                                                                                                                            
+                                                                                                                                                                                                  
+  2. 启动服务端守护进程:                                                                                                                                                                          
+  sudo dns2tcpd -F -f /etc/dns2tcpd.conf                                                                                                                                                          
+```
+## DNS记录配置                                                                                                                                                                                     
+在您的域名DNS中添加以下记录：                                                                                                                                                                   
+```
+  # A记录指向隧道服务器                                                                                                                                                                           
+  tunnel        IN  A  your.server.ip                                                                                                                                                             
+                                                                                                                                                                                                  
+  # NS记录委派子域                                                                                                                                                                                
+  dnstunnel     IN  NS  tunnel.yourdomain.com                                                                                                                                                     
+```
+
+## 客户端使用 (dns2tcpc)                                                                                                                                                                                          
+```
+列出可用资源:
+  dns2tcpc -z dnstunnel.yourdomain.com your.server.ip                                                                                                                                             
+                                                                                                                                                                                                  
+  连接SSH:                                                                                                                                                                                        
+  dns2tcpc -z dnstunnel.yourdomain.com -r ssh your.server.ip                                                                                                                                      
+                                                                                                                                                                                                  
+  通过DNS隧道使用SSH:                                                                                                                                                                             
+  # 本地启动dns2tcp客户端                                                                                                                                                                         
+  dns2tcpc -z dnstunnel.yourdomain.com -l 8888 -r ssh your.server.ip &                                                                                                                            
+                                                                                                                                                                                                  
+  # 通过隧道SSH连接                                                                                                                                                                               
+  ssh -p 8888 user@localhost                                                                                                                                                                      
+                                                                                                                                                                                                  
+  调试模式连接:                                                                                                                                                                                   
+  dns2tcpc -z dnstunnel.yourdomain.com -r ssh -d your.server.ip                                                                                                                                   
+
+```
+
+## 常用资源配置
+```
+  resources = ssh:127.0.0.1:22,           # SSH隧道                                                                                                                                               
+                smtp:127.0.0.1:25,        # SMTP/邮件                                                                                                                                             
+                pop3:127.0.0.1:110,       # POP3                                                                                                                                                  
+                http:127.0.0.1:3128,      # HTTP代理                                                                                                                                              
+                https:127.0.0.1:8443      # HTTPS                                                                                                                                                 
+                                                                                                                                                                                                  
+  完整使用示例                                                                                                                                                                                    
+                                                                                                                                                                                                  
+  场景：绕过强制门户 + SSH隧道                                                                                                                                                                    
+                                                                                                                                                                                                  
+  # 1. 服务器端 (VPS)                                                                                                                                                                             
+  sudo dns2tcpd -F -f /etc/dns2tcpd.conf                                                                                                                                                          
+                                                                                                                                                                                                  
+  # 2. 客户端 (被限制网络)                                                                                                                                                                        
+  dns2tcpc -z dnstunnel.example.com -l 2222 -r ssh 1.2.3.4                                                                                                                                        
+                                                                                                                                                                                                  
+  # 3. 通过DNS隧道SSH                                                                                                                                                                             
+  ssh -p 2222 user@localhost                                                                                                                                                                      
+                                                                                                                                                                                                  
+  检测DNS隧道流量                                                                                                                                                                                 
+                                                                                                                                                                                                  
+  # 捕获DNS TXT/KEY请求                                                                                                                                                                           
+  tcpdump -i any -n 'port 53 and (txt or key)' -v                                                                                                                                                 
+                                                                                                                                                                                                  
+  # 子域名编码检测                                                                                                                                                                                
+  tcpdump -i any -n 'port 53' -A | grep -E '^[0-9a-f]{32,}'                                                                                                                                       
+ ```
+
+## 性能参考                                                                                                                                                                                        
+  ┌──────────┬────────────────────────────┐                                                                                                                                                       
+  │   指标    │           典型值           │                                                                                                                                                       
+  ├──────────┼────────────────────────────┤                                                                                                                                                       
+  │ 吞吐量    │ 1-3 KB/s                   │                                                                                                                                                       
+  ├──────────┼────────────────────────────┤                                                                                                                                                       
+  │ 延迟      │ 100-500ms/包               │                                                                                                                                                       
+  ├──────────┼────────────────────────────┤                                                                                                                                                       
+  │ 适用场景  │ SSH、IRC；不适合大文件传输    │                                                                                                                                                       
+  └──────────┴────────────────────────────┘                                                                                                                                                       
+  ---                                                                                                                                                                                             
+  ⚠️ 安全提醒：                                                                                                                                                                                   
+  - dns2tcp默认无加密，建议配合SSH/VPN使用                                                                                                                                                        
+  - 仅用于授权的安全测试和研究                                                                                                                                                                    
+  - 流量特征明显，易被检测    
