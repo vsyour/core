@@ -102,7 +102,7 @@ socat UDP4-LISTEN:53,fork UDP4:1.2.3.4:2319 &
 
 
 # 其他参考信息
-##安装 
+## 安装 
 ```
   Kali Linux (预装):                                                                                                                                                                              
   dns2tcpd --version                                                                                                                                                                              
