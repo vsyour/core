@@ -83,3 +83,16 @@ AllowTcpForwarding yes
 # 建议同时检查这一项，确保不是 no
 PermitOpen any
 ```
+
+## 远端非53端口可以通过本地转发
+```
+# iptables 转发的方案
+# 请将 <VPS_IP> 替换为你服务器的真实 IP 地址
+# 逻辑：凡是发往 VPS UDP 53 的包，全部改写目标端口为 2319
+sudo iptables -t nat -A OUTPUT -p udp -d <VPS_IP> --dport 53 -j DNAT --to-destination <VPS_IP>:2319
+
+## 使用 socat 替代 iptables
+# 解释：监听本地 UDP 53 端口，收到数据后，转发给 1.2.3.4 的 2319 端口
+# & 符号表示在后台运行
+socat UDP4-LISTEN:53,fork UDP4:1.2.3.4:2319 &
+```
