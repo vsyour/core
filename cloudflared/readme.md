@@ -19,6 +19,8 @@ chmod +x ECHWorkersGUI  # 如果使用 GUI
 # test
 google-chrome --proxy-server="socks5://127.0.0.1:30001"
 curl --socks5 127.0.0.1:30001 http://www.google.com
+curl --socks5 127.0.0.1:30001 https://ip.me
+curl -s -f --socks5 127.0.0.1:30001 https://ip.me --connect-timeout 3
 
 # set env
 export ALL_PROXY=socks5://127.0.0.1:30001
